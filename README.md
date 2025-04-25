@@ -1,1 +1,235 @@
-# index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Environmental Ethics Matching Game</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background-color: #e3f2fd;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    h1 {
+      margin: 10px;
+      color: #2e7d32;
+    }
+    .give-up {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background-color: #ef5350;
+      color: white;
+      padding: 10px 15px;
+      text-decoration: none;
+      border-radius: 5px;
+      font-weight: bold;
+    }
+    .give-up:hover {
+      background-color: #c62828;
+    }
+    .game-board {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      grid-auto-rows: 1fr;
+      gap: 10px;
+      width: 100%;
+      max-width: 1400px;
+      flex-grow: 1;
+      overflow-y: auto;
+    }
+    .card {
+      background-color: white;
+      border: 2px solid #90caf9;
+      border-radius: 10px;
+      padding: 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: 0.3s;
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      font-size: 0.9em;
+    }
+    .card:hover {
+      background-color: #e0f7fa;
+    }
+    .card.matched {
+      background-color: #a5d6a7;
+      border-color: #66bb6a;
+      cursor: default;
+    }
+    .card.wrong {
+      border: 2px solid #ef5350;
+    }
+    .card.selected {
+      background-color: #bbdefb;
+    }
+    #message {
+      text-align: center;
+      font-size: 1em;
+      margin-top: 10px;
+    }
+    #restartButton {
+      display: none;
+      margin: 10px auto;
+      padding: 8px 16px;
+      font-size: 1em;
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #restartButton:hover {
+      background-color: #388e3c;
+    }
+  </style>
+</head>
+<body>
+  <a class="give-up" href="https://docs.google.com/document/d/1xXPHj6d5DY78MD5K41M1AB43sk4TnQJK8InaavTnlAs/edit?tab=t.0" target="_blank">I Give Up</a>
+  <h1>Environmental Ethics Matching Game</h1>
+  <div class="game-board" id="gameBoard"></div>
+  <div id="message"></div>
+  <button id="restartButton" onclick="createBoard()">Play Again</button>
+
+  <audio id="matchSound" src="https://www.soundjay.com/button/beep-07.wav"></audio>
+  <audio id="wrongSound" src="https://www.soundjay.com/button/beep-10.wav"></audio>
+  <audio id="winSound" src="https://www.soundjay.com/human/applause-8.mp3"></audio>
+
+  <script>
+    const pairs = [
+      ["Environmental Policy & Ethics", "Principles guiding decisions about human impacts on the environment"],
+      ["William Blackstone’s Environmental Rights Theory", "Belief that a clean environment is a fundamental human right"],
+      ["Early Industrial Paradigm", "Business, government, consumers need to not think of business impacting the environment"],
+      ["Anthropocentrism", "Philosophy that humans have a right to a livable environment, humans have the duty to not harm others livable environment"],
+      ["Ecological Ethics Approach", "Values ecosystems and non-human life intrinsically"],
+      ["ESG Investing", "Investment strategy focusing on Environmental, Social, and Governance criteria"],
+      ["Environmental Protection Agency (EPA)", "U.S. federal agency regulating environmental laws"],
+      ["Indiana Department of Environmental Management", "Indiana's state-level agency overseeing environmental protection"],
+      ["CTAP", "Compliance and Technical Assistance Program for small businesses in Indiana"],
+      ["Environmental Degradation", "Damage to the natural environment due to human activity"],
+      ["Market Failure/Cost Divergence", "When markets fail to reflect environmental costs, inefficient allocation of resources"],
+      ["Benefits & Burdens", "Distribution of environmental impacts and advantages across groups"],
+      ["Private", "The cost an individual or company must pay out of its own pocket to engage in an economic activity"],
+      ["External Cost", "The costs incurred by third parties who are not directly involved in a company's operation"],
+      ["Social Cost", "The sum of costs (Private internal costs + external costs)"],
+      ["Corporate Leadership (Environmental Goals)", "Business leaders aligning strategies with sustainability"],
+      ["Cognitive Dissonance (Profitability vs. Sustainability)", "Mental discomfort from conflicting goals like profit vs green goals"],
+      ["Kaizen", "Philosophy of continuous improvement including in sustainability efforts"],
+      ["Clean Air Act", "U.S. law regulating air emissions from stationary and mobile sources"],
+      ["Clean Water Act", "Federal law governing water pollution"],
+      ["Rejection Theory", "Denial of environmental issues as significant. Future generation do not exist"],
+      ["Rawlsian Theory", "Considers environmental policy and decisions under the veil of ignorance"],
+      ["Utilitarianism", "Ethical theory focusing on the greatest good for the greatest number"],
+      ["Sustainability", "Meeting current needs without compromising future generations"],
+      ["Eco-Feminism", "Link between environmental harm and the oppression of women"],
+      ["Social Ecology", "Environmental problems are connected to social systems of hierarchy and domination"]
+    ];
+
+    const matchSound = document.getElementById("matchSound");
+    const wrongSound = document.getElementById("wrongSound");
+    const winSound = document.getElementById("winSound");
+
+    let cards = [];
+    let selected = [];
+    let matchedCount = 0;
+
+    function shuffle(array) {
+      return array.sort(() => Math.random() - 0.5);
+    }
+
+    function createBoard() {
+      const board = document.getElementById("gameBoard");
+      const message = document.getElementById("message");
+      const button = document.getElementById("restartButton");
+      matchedCount = 0;
+      selected = [];
+      message.textContent = "";
+      button.style.display = "none";
+
+      cards = shuffle(pairs.flatMap(([term, def]) => [
+        { text: term, pair: def, type: 'term' },
+        { text: def, pair: term, type: 'definition' }
+      ]));
+
+      board.innerHTML = "";
+      cards.forEach((card, index) => {
+        const div = document.createElement("div");
+        div.className = "card";
+        div.textContent = card.text;
+        div.dataset.index = index;
+        div.addEventListener("click", () => selectCard(index));
+        board.appendChild(div);
+      });
+    }
+
+    function selectCard(index) {
+      const card = cards[index];
+      const cardElement = document.querySelectorAll(".card")[index];
+
+      if (cardElement.classList.contains("matched")) return;
+
+      if (selected.includes(index)) {
+        cardElement.classList.remove("selected");
+        selected = selected.filter(i => i !== index);
+        return;
+      }
+
+      cardElement.classList.remove("wrong");
+      cardElement.classList.add("selected");
+      selected.push(index);
+
+      if (selected.length === 2) {
+        const [i1, i2] = selected;
+        const c1 = cards[i1];
+        const c2 = cards[i2];
+        const el1 = document.querySelectorAll(".card")[i1];
+        const el2 = document.querySelectorAll(".card")[i2];
+
+        setTimeout(() => {
+          if (c1.text === c2.pair || c2.text === c1.pair) {
+            el1.classList.remove("selected");
+            el2.classList.remove("selected");
+            el1.classList.add("matched");
+            el2.classList.add("matched");
+            matchSound.play();
+            matchedCount += 2;
+            if (matchedCount === cards.length) {
+              document.getElementById("message").textContent = "🎉 Congratulations! You matched all the concepts!";
+              document.getElementById("restartButton").style.display = "block";
+              winSound.play();
+            }
+          } else {
+            el1.classList.remove("selected");
+            el2.classList.remove("selected");
+            el1.classList.add("wrong");
+            el2.classList.add("wrong");
+            wrongSound.play();
+            setTimeout(() => {
+              el1.classList.remove("wrong");
+              el2.classList.remove("wrong");
+            }, 1000);
+          }
+          selected = [];
+        }, 800);
+      }
+    }
+
+    createBoard();
+  </script>
+</body>
+</html>
